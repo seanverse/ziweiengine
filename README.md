@@ -279,7 +279,7 @@ npm test            # 排盘引擎回归（768 盘 × 紫微铁律、夏令时�
 
 每次 push 与 PR 都会在 GitHub Actions 上跑同一套（见 [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)）。
 
-> **注意：开源版不含后端 API 路由。**排盘、命盘展示、合盘起盘都在浏览器里用本仓库的引擎完成，**不需要任何 API Key**。AI 解读（`/api/interpret`）和合盘 AI 分析（`/api/heming`）需要你自己实现接口；没实现之前，这两处会直接提示「开源版不含该接口」，配置 API Key 也不会变成可用（#30 就是这个原因）。
+> **AI 解读已包含基础实现。**排盘、命盘展示、合盘起盘仍在浏览器里用本仓库的引擎完成，不需要 API Key。配置 `DEEPSEEK_API_KEY` 后即可使用 `/api/interpret` 与 `/api/heming`；公网部署建议同时配置 Upstash Redis 做限流与缓存。实现细节见 [`docs/api-interpret-plan.md`](./docs/api-interpret-plan.md)。
 
 ---
 
@@ -367,9 +367,9 @@ npm test            # 排盘引擎回归（768 盘 × 紫微铁律、夏令时�
 | | 内容 |
 |---|---|
 | ✅ **开源** | 排盘引擎（`lib/ziwei/`）、古籍公版原文（`lib/classics/`）、SEO 知识图谱（`lib/seo/`）、Demo 界面、51.8 万样本数据集、13 维解读数据集 v4.0 |
-| ❌ **不开源** | 断语库（`lib/ziwei/db-analysis.ts` 是占位，线上是上万行的 13 主题断语）、AI 解读 prompt、后端 API（`/api/interpret` 等）、用户系统（登录 / 会员 / 支付）、服务端安全（签名、防刷、水印）、部署配置 |
+| ❌ **不开源** | 断语库（`lib/ziwei/db-analysis.ts` 是占位，线上是上万行的 13 主题断语）、线上商业版的 prompt 调优与运营配置、用户系统（登录 / 会员 / 支付）、服务端风控（签名、防刷、水印）、部署配置 |
 
-如果你需要 AI 解读能力，可以参考 `lib/ziwei/patterns.ts` 和 `heming-knowledge.ts` 里的知识库，结合任意 LLM 自行构建 prompt。
+AI 解读的基础实现已随仓库提供：`lib/ai/` + `/api/interpret` + `/api/heming`，提示词集中在 `lib/ai/prompts.ts`，知识检索覆盖 `lib/classics/`、`docs/tianji-ziwei/` 与 `heming-knowledge.ts`。可以按自己的需要直接改 prompt 与检索策略。
 
 ---
 

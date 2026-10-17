@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // 公告版本号——以后想再弹新公告，改这里就行（旧版 key 失效，新版重新弹一次）
-const ANNOUNCEMENT_VERSION = '2026-05-01';
+const ANNOUNCEMENT_VERSION = '2026-10-17b';
 const STORAGE_KEY = `announcement_seen_${ANNOUNCEMENT_VERSION}`;
 
 export default function AnnouncementModal() {
@@ -85,10 +85,10 @@ export default function AnnouncementModal() {
               position: 'relative',
             }}>
               <div style={{ fontSize: '10px', letterSpacing: '0.4em', color: '#b8922a', opacity: 0.7, marginBottom: '6px' }}>
-                A LETTER TO USERS
+                ABOUT ZIWEI DOUSHU
               </div>
               <h2 style={{ fontSize: '19px', fontWeight: 700, color: '#3d2f10', letterSpacing: '0.08em', margin: 0 }}>
-                致正在使用这个平台的你
+                关于紫微斗数
               </h2>
               <button
                 onClick={close}
@@ -106,26 +106,6 @@ export default function AnnouncementModal() {
               >×</button>
             </div>
 
-            {/* 限时免费 banner（最关键信息，置顶强调）*/}
-            <div style={{
-              margin: '14px 22px 0',
-              padding: '12px 16px',
-              background: 'linear-gradient(135deg, #fff5e3 0%, #ffe1c0 100%)',
-              border: '1.5px dashed rgba(232,132,62,0.5)',
-              borderRadius: '12px',
-              flexShrink: 0,
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: '10px', letterSpacing: '0.3em', color: '#c45a2d', marginBottom: '4px', fontWeight: 600 }}>
-                LIMITED TIME · 限时回馈
-              </div>
-              <div style={{ fontSize: '14px', color: '#8b3a1a', fontWeight: 600, lineHeight: 1.6 }}>
-                <span style={{ fontSize: '16px', color: '#c45a2d', fontWeight: 700 }}>5 月 1 日 — 5 月 8 日</span>
-                <br />
-                平台全部功能 + AI 提问 全部免费开放
-              </div>
-            </div>
-
             {/* 正文（可滚动）*/}
             <div style={{
               padding: '18px 28px 24px',
@@ -136,39 +116,23 @@ export default function AnnouncementModal() {
               flex: 1,
             }}>
               <p style={{ margin: '0 0 12px' }}>
-                说实话，我真的没想到会有这么大的流量。
+                <strong style={{ color: '#3d2f10' }}>紫微斗数是什么？</strong>它是中国传统命理术数之一，以人的出生时间排布十二宫与诸星曜，形成一张命盘，再由星曜组合推演人生各阶段的形态。它与八字、六爻等同属古代术数体系。
               </p>
               <p style={{ margin: '0 0 12px' }}>
-                最开始做这个平台，我的初心其实很简单：在 AI 时代，把倪师这套原本复杂、门槛很高的体系，尽量做得更简单、更高效、更容易理解。
+                <strong style={{ color: '#3d2f10' }}>起源与过去的作用。</strong>紫微斗数相传始于宋代陈抟（希夷先生），明清时期逐步成熟并形成完整体系。古人借助它观察人生的节律与处境，把它当作一种自我认知和辅助判断的框架，而非精确预知未来的工具。
               </p>
               <p style={{ margin: '0 0 12px' }}>
-                不一定每个人都要先学很久、看很多书，才能接触这些内容。我们希望通过这个平台，让大家用更轻松的方式，获得一些对自我、人生阶段、选择方向的参考和启发。
+                <strong style={{ color: '#3d2f10' }}>今天怎么看。</strong>现代社会把它视作传统文化与民俗的一部分，可以了解、可以研究，但我们不传播、不鼓励迷信。人的选择与努力始终比任何命盘更重要，请勿据此做重大决定。
               </p>
               <p style={{
-                margin: '0 0 12px',
-                padding: '10px 14px',
+                margin: '0 0 16px',
+                padding: '12px 14px',
                 background: 'rgba(184,146,42,0.07)',
                 borderLeft: '3px solid rgba(184,146,42,0.45)',
                 borderRadius: '0 8px 8px 0',
-                fontStyle: 'italic',
                 color: '#7a5e2a',
               }}>
-                倪师曾说过一句话：人怎么可能发明出完全没有用的东西呢？
-              </p>
-              <p style={{ margin: '0 0 12px' }}>
-                我一直觉得，易经如此，紫微斗数也是如此。它们真正有价值的地方，不是让人被某个结果困住，而是让我们更早看见自己的性格惯性、人生课题和选择方向。看见之后，才有机会调整；理解之后，才有机会变得更好。
-              </p>
-              <p style={{ margin: '0 0 12px' }}>
-                至于那些说&ldquo;你当下在看这些，其实也是命运的一部分&rdquo;之类的话，我就不多评价了。
-              </p>
-              <p style={{ margin: '0 0 12px' }}>
-                这几天账号被小红书抬走了，<strong style={{ color: '#c45a2d' }}>5 月 3 号开始恢复正常更新。</strong>
-              </p>
-              <p style={{ margin: '0 0 16px', color: '#3d2f10', fontWeight: 500 }}>
-                最后，真心祝愿大家都能越来越了解自己，越来越爱自己，也越来越有能力爱身边的人。
-              </p>
-              <p style={{ margin: 0, textAlign: 'right', fontSize: '13px', color: '#7a5e2a' }}>
-                ——谢谢大家 🙏
+                <strong style={{ color: '#3d2f10' }}>免责声明：</strong>本项目源自<strong style={{ color: '#3d2f10' }}>紫微斗数开源样本数据集 v3.0</strong>，是来自开源社区的测试运行版本，功能与数据均可能随时变更、中断或出错，不作任何可用性保证。站内所有内容仅供传统文化学习与娱乐参考，不构成医疗、法律、财务或任何其他专业建议，亦不构成对未来的预测。使用本平台所产生的一切后果由使用者自行承担。
               </p>
             </div>
 

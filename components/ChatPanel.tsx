@@ -2,6 +2,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart } from '@/lib/ziwei/types';
+import { streamInterpret } from '@/lib/api/interpret-client';
+import type { SourceItem } from '@/lib/ai/sources/types';
+import MarkdownContent from './MarkdownContent';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -10,6 +13,8 @@ interface Message {
 
 interface ChatPanelProps {
   chart: ZiweiChart;
+  view?: 'mingpan' | 'daxian' | 'liunian';
+  liunianYear?: number;
 }
 
 const PRESET_QUESTIONS = [
@@ -21,8 +26,9 @@ const PRESET_QUESTIONS = [
   '今年的流年运势如何？',
 ];
 
-export default function ChatPanel({ chart }: ChatPanelProps) {
+export default function ChatPanel({ chart, view, liunianYear }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [sources, setSources] = useState<SourceItem[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,51 +46,41 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
     setInput('');
     setLoading(true);
 
+    const apiMessages = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
+    let assistantText = '';
+
+    setSources([]);
+    setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
     try {
-      const res = await fetch('/api/interpret', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart, messages: [...messages, userMsg] }),
-      });
-
-      if (res.status === 404) throw new Error('api-missing');
-      if (!res.ok) throw new Error('请求失败');
-      if (!res.body) throw new Error('无响应流');
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantText = '';
-
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.delta?.text ?? '';
-              assistantText += delta;
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: assistantText };
-                return updated;
-              });
-            } catch { /* skip */ }
-          }
-        }
-      }
-    } catch (e) {
-      const missing = e instanceof Error && e.message === 'api-missing';
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : '解读失败，请检查API配置或稍后重试。',
-      }]);
+      await streamInterpret(
+        { chart, messages: apiMessages, context: { view, liunianYear } },
+        {
+          onDelta: text => {
+            assistantText += text;
+            setMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: 'assistant', content: assistantText };
+              return updated;
+            });
+          },
+          onSources: setSources,
+          onError: (code, message) => {
+            const content = code === 'not_implemented'
+              ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。'
+              : message;
+            setMessages(prev => {
+              const updated = [...prev];
+              if (updated[updated.length - 1]?.role === 'assistant' && !updated[updated.length - 1].content) {
+                updated[updated.length - 1] = { role: 'assistant', content };
+              } else {
+                updated.push({ role: 'assistant', content });
+              }
+              return updated;
+            });
+          },
+        },
+      );
     } finally {
       setLoading(false);
     }
@@ -133,17 +129,41 @@ export default function ChatPanel({ chart }: ChatPanelProps) {
                 {msg.role === 'assistant' && (
                   <div className="text-[10px] mb-1" style={{ color: 'var(--t-faint)' }}>命理师 ·</div>
                 )}
-                <div className="whitespace-pre-wrap text-xs leading-relaxed">
-                  {msg.content}
-                  {loading && i === messages.length - 1 && msg.role === 'assistant' && (
-                    <span className="inline-block w-1.5 h-3 ml-0.5 animate-pulse" style={{ background: 'var(--t-gold)', opacity: 0.6 }} />
-                  )}
+                <div className="text-xs leading-relaxed">
+                  <MarkdownContent
+                    text={msg.content}
+                    streaming={loading && i === messages.length - 1 && msg.role === 'assistant'}
+                  />
                 </div>
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
+
+      {/* 依据 */}
+      {sources.length > 0 && (
+        <div className="px-3 pb-2 flex-shrink-0">
+          <details>
+            <summary className="cursor-pointer text-[10px]" style={{ color: 'var(--t-faint)' }}>
+              依据（{sources.length}）
+            </summary>
+            <ul className="mt-1 space-y-1">
+              {sources.map(source => (
+                <li key={source.id} className="text-[10px] leading-relaxed" style={{ color: 'var(--t-text2)' }}>
+                  {source.url ? (
+                    <a href={source.url} target="_blank" rel="noreferrer" style={{ color: 'var(--t-gold)' }}>
+                      {source.work} · {source.citation}
+                    </a>
+                  ) : (
+                    <span style={{ color: 'var(--t-faint)' }}>{source.work} · {source.citation}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
 
       {/* 预设问题 */}
       {messages.length === 0 && (

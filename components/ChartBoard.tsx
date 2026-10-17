@@ -11,6 +11,10 @@ interface ChartBoardProps {
   onStarSelect?: (star: Star, palace: Palace) => void;
   onPalaceSelect?: (palace: Palace) => void;
   onSiHuaClick?: (starName: string, siHua: string, view: TimeView) => void;
+  view?: TimeView;
+  liunianYear?: number;
+  onViewChange?: (view: TimeView) => void;
+  onYearChange?: (year: number) => void;
 }
 
 const BRANCH_GRID_POS: Record<number, [number, number]> = {
@@ -52,10 +56,24 @@ function getSanFangSiZheng(branch: number): [number, number, number, number] {
 
 const ANIMATION_ORDER = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 
-export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick }: ChartBoardProps) {
+export default function ChartBoard({
+  chart,
+  onStarSelect,
+  onPalaceSelect,
+  onSiHuaClick,
+  view,
+  liunianYear: controlledYear,
+  onViewChange,
+  onYearChange,
+}: ChartBoardProps) {
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
-  const [timeView, setTimeView] = useState<TimeView>('mingpan');
-  const [liunianYear, setLiunianYear] = useState<number>(new Date().getFullYear());
+  const [internalView, setInternalView] = useState<TimeView>('mingpan');
+  const [internalYear, setInternalYear] = useState<number>(new Date().getFullYear());
+
+  const timeView = view ?? internalView;
+  const liunianYear = controlledYear ?? internalYear;
+  const setTimeView = onViewChange ?? setInternalView;
+  const setLiunianYear = onYearChange ?? setInternalYear;
 
   const palaceMap: Record<number, Palace> = {};
   chart.palaces.forEach(p => { palaceMap[p.branch] = p; });

@@ -6,47 +6,11 @@ import { formToBirthInfo } from '@/lib/ziwei/share';
 import { generateChart as buildChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart } from '@/lib/ziwei/types';
 import { useTheme } from '@/components/ThemeProvider';
+import { streamSSE } from '@/lib/api/interpret-client';
+import MarkdownContent from '@/components/MarkdownContent';
+import type { SourceItem } from '@/lib/ai/sources/types';
 
 // ─── AiContent 渲染器（与 InsightPanel 一致）────────────────
-function AiContent({ text, streaming }: { text: string; streaming?: boolean }) {
-  const lines = text.split('\n');
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-      {lines.map((line, i) => {
-        const sectionMatch = line.match(/^\*\*【(.+?)】\*\*$/);
-        if (sectionMatch) {
-          return (
-            <div key={i} style={{ paddingTop: i === 0 ? 0 : '14px', paddingBottom: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ac)', letterSpacing: '0.04em' }}>
-                【{sectionMatch[1]}】
-              </span>
-            </div>
-          );
-        }
-        if (line.trim() === '') return <div key={i} style={{ height: '4px' }} />;
-        const parts = line.split(/\*\*(.+?)\*\*/);
-        return (
-          <div key={i} style={{ fontSize: '13px', lineHeight: 1.75, color: 'var(--tx-2)' }}>
-            {parts.map((part, j) =>
-              j % 2 === 0
-                ? part
-                : <strong key={j} style={{ fontWeight: 500, color: 'var(--tx-0)' }}>{part}</strong>
-            )}
-          </div>
-        );
-      })}
-      {streaming && (
-        <span style={{
-          display: 'inline-block', width: '7px', height: '13px',
-          background: 'var(--ac)', opacity: 0.5, borderRadius: '2px',
-          animation: 'pulse 1s ease-in-out infinite',
-          verticalAlign: 'middle', marginLeft: '2px',
-        }} />
-      )}
-    </div>
-  );
-}
-
 export default function HemingPage() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -61,6 +25,7 @@ export default function HemingPage() {
 
   // ─── AI 合盘分析状态 ─────────────────────────────────────
   const [analysis, setAnalysis] = useState('');
+  const [sources, setSources] = useState<SourceItem[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [question, setQuestion] = useState('');
   const [analysisError, setAnalysisError] = useState(false);
@@ -112,33 +77,24 @@ export default function HemingPage() {
       if (!chartA) setChartA(cA);
       if (!chartB) setChartB(cB);
 
-      const res = await fetch('/api/heming', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chartA: cA, chartB: cB, question: q ?? undefined }),
-      });
-      if (res.status === 404) { setApiMissing(true); throw new Error('api-missing'); }
-      if (!res.ok || !res.body) throw new Error();
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
       let text = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6);
-          if (data === '[DONE]') break;
-          try {
-            const delta = JSON.parse(data).delta?.text ?? '';
+      setSources([]);
+      await streamSSE(
+        '/api/heming',
+        { chartA: cA, chartB: cB, question: q ?? undefined },
+        {
+          onDelta: delta => {
             text += delta;
             setAnalysis(text);
-          } catch { /* skip */ }
-        }
-      }
+          },
+          onSources: setSources,
+          onError: (code, message) => {
+            if (code === 'not_implemented') setApiMissing(true);
+            else setAnalysisError(true);
+            if (message) setAnalysis(prev => prev || message);
+          },
+        },
+      );
       // scroll to analysis
       setTimeout(() => analysisRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch {
@@ -280,7 +236,26 @@ export default function HemingPage() {
             </div>
           )}
 
-          {analysis && <AiContent text={analysis} streaming={analyzing} />}
+          {analysis && <MarkdownContent text={analysis} streaming={analyzing} />}
+
+          {sources.length > 0 && (
+            <details style={{ marginTop: '16px', fontSize: '12px', color: 'var(--tx-2)' }}>
+              <summary style={{ cursor: 'pointer', color: 'var(--tx-2)' }}>依据（{sources.length}）</summary>
+              <ul style={{ marginTop: '8px', paddingLeft: '18px', lineHeight: 1.7 }}>
+                {sources.map(source => (
+                  <li key={source.id}>
+                    {source.url ? (
+                      <a href={source.url} target="_blank" rel="noreferrer" style={{ color: 'var(--ac)' }}>
+                        {source.work} · {source.citation}
+                      </a>
+                    ) : (
+                      <span>{source.work} · {source.citation}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           {analysisError && (
             <div style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--bdr)', background: 'var(--bg-card)', fontSize: '13px', color: 'var(--tx-2)', marginTop: '12px' }}>

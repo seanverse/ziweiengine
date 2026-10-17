@@ -3,7 +3,7 @@ import { useState } from 'react';
 import BirthForm from '@/components/BirthForm';
 import ChartBoard from '@/components/ChartBoard';
 import InsightPanel from '@/components/InsightPanel';
-import TimeNav, { type TimeView } from '@/components/TimeNav';
+import type { TimeView } from '@/components/TimeNav';
 import { generateChart } from '@/lib/ziwei/algorithm';
 import type { BirthInfo, ZiweiChart, Palace } from '@/lib/ziwei/types';
 
@@ -20,6 +20,11 @@ import type { BirthInfo, ZiweiChart, Palace } from '@/lib/ziwei/types';
 export default function ChartPage() {
   const [chart, setChart] = useState<ZiweiChart | null>(null);
   const [selectedPalace, setSelectedPalace] = useState<Palace | null>(null);
+  const [selectedSiHua, setSelectedSiHua] = useState<{
+    starName: string;
+    siHua: string;
+    view: TimeView;
+  } | null>(null);
   const [view, setView] = useState<TimeView>('mingpan');
   const [liunianYear, setLiunianYear] = useState(() => new Date().getFullYear());
 
@@ -30,8 +35,6 @@ export default function ChartPage() {
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>紫微斗数排盘</h1>
         <p style={{ color: '#888', marginBottom: 32, fontSize: 14, lineHeight: 1.7 }}>
           输入出生年月日时，开源排盘引擎即时生成命盘。
-          <br />
-          （本页为引擎 Demo，完整商业版界面不在开源范围；排盘内核完全开放。）
         </p>
         <BirthForm onSubmit={(info: BirthInfo) => setChart(generateChart(info))} />
       </main>
@@ -52,23 +55,25 @@ export default function ChartPage() {
         ← 重新起盘
       </button>
 
-      <TimeNav
-        chart={chart}
-        view={view}
-        liunianYear={liunianYear}
-        onViewChange={setView}
-        onYearChange={setLiunianYear}
-      />
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 380px)',
-          gap: 20, marginTop: 16, alignItems: 'start',
-        }}
-      >
-        <ChartBoard chart={chart} onPalaceSelect={setSelectedPalace} />
-        <InsightPanel chart={chart} selectedPalace={selectedPalace} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 16 }}>
+        <ChartBoard
+          chart={chart}
+          view={view}
+          liunianYear={liunianYear}
+          onViewChange={setView}
+          onYearChange={setLiunianYear}
+          onPalaceSelect={setSelectedPalace}
+          onSiHuaClick={(starName, siHua, siHuaView) => setSelectedSiHua({ starName, siHua, view: siHuaView })}
+        />
+        <div style={{ height: 'min(70vh, 680px)', minHeight: 460 }}>
+          <InsightPanel
+            chart={chart}
+            selectedPalace={selectedPalace}
+            selectedSiHua={selectedSiHua}
+            view={view}
+            liunianYear={liunianYear}
+          />
+        </div>
       </div>
     </main>
   );
