@@ -105,7 +105,16 @@ export async function checkRateLimit(ip: string, chartFp: string): Promise<RateL
 }
 
 export function clientIp(headers: Headers): string {
+  // Vercel 由平台写入 x-vercel-forwarded-for，客户端无法伪造。
+  const vercel = headers.get('x-vercel-forwarded-for');
+  if (vercel) return vercel.split(',')[0].trim();
+
+  // 自建反代（nginx 等）应覆写 x-real-ip；次选 x-forwarded-for。
+  const real = headers.get('x-real-ip');
+  if (real) return real.trim();
+
   const forwarded = headers.get('x-forwarded-for');
   if (forwarded) return forwarded.split(',')[0].trim();
-  return headers.get('x-real-ip') ?? 'unknown';
+
+  return 'unknown';
 }

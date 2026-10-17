@@ -19,7 +19,7 @@ import type { SourceItem } from '@/lib/ai/sources/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 interface BatchContext {
   view?: TimeView;
@@ -248,45 +248,37 @@ export async function POST(request: NextRequest): Promise<Response> {
       };
 
       const sections: Partial<Record<BatchTopic, SectionResult>> = {};
-      const pending: { topic: BatchTopic; result: SectionResult }[] = [];
-      let overviewReady = false;
 
       const emit = (topic: BatchTopic, result: SectionResult) => {
         enqueue(new TextEncoder().encode(`data: ${sectionPayload(topic, result)}\n\n`));
       };
 
-      // 第一个 Tab（命格）优先下发；其余结果先缓存，等命格到达后按完成顺序补发。
-      const emitOrdered = (topic: BatchTopic, result: SectionResult) => {
-        if (topic === 'overview') {
-          overviewReady = true;
-          emit(topic, result);
-          for (const item of pending.splice(0)) emit(item.topic, item.result);
-          return;
-        }
-        if (overviewReady) emit(topic, result);
-        else pending.push({ topic, result });
-      };
-
-      const tasks = BATCH_TOPICS.map(async topic => {
-        try {
-          const result = await generateTopic(topic, body.chart!, facts, context, provider, controller.signal);
-          if (!result.text) return;
-          sections[topic] = result;
-          emitOrdered(topic, result);
-        } catch (error) {
-          if (!controller.signal.aborted) {
-            console.error(`[ai/batch] ${topic} failed:`, error);
-          }
-        }
-      });
-
       try {
-        await Promise.all(tasks);
+        // 第一步：先单独生成命格，拿到结果立即下发。
+        try {
+          const overview = await generateTopic('overview', body.chart!, facts, context, provider, controller.signal);
+          if (overview.text) {
+            sections.overview = overview;
+            emit('overview', overview);
+          }
+        } catch (error) {
+          if (!controller.signal.aborted) console.error('[ai/batch] overview failed:', error);
+        }
 
-        // 命格失败时，退化为第一个完成的结果先显示。
-        if (!overviewReady && pending.length) {
-          overviewReady = true;
-          for (const item of pending.splice(0)) emit(item.topic, item.result);
+        // 第二步：命格完成后，其余五项并发。
+        if (!controller.signal.aborted) {
+          await Promise.all(
+            BATCH_TOPICS.filter(topic => topic !== 'overview').map(async topic => {
+              try {
+                const result = await generateTopic(topic, body.chart!, facts, context, provider, controller.signal);
+                if (!result.text) return;
+                sections[topic] = result;
+                emit(topic, result);
+              } catch (error) {
+                if (!controller.signal.aborted) console.error(`[ai/batch] ${topic} failed:`, error);
+              }
+            }),
+          );
         }
 
         if (!Object.keys(sections).length) {
